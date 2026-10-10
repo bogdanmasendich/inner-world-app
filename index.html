@@ -289,7 +289,42 @@ $$('.product-action').forEach(b=>b.addEventListener('click',()=>{
 const canvas=$('#particleCanvas'),ctx=canvas.getContext('2d'),sphere=$('#spherehold'),label=$('#holdlabel'),ring=$('#progressCircle');
 let W=0,H=0,particles=[],ordered=false,holding=false,holdStart=0,rafHold=null,raf=0,last=0,rotation=0;
 const N=56;
-function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(!particles.length)initParticles()}
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  const newW = r.width;
+  const newH = r.height;
+
+  if (!newW || !newH) return;
+
+  const changed = newW !== W || newH !== H;
+
+  W = newW;
+  H = newH;
+
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (!particles.length) {
+    initParticles();
+  } else if (changed) {
+    particles.forEach(p => {
+      p.x = Math.min(p.x, W);
+      p.y = Math.min(p.y, H);
+    });
+    targets();
+  }
+}
+
+window.addEventListener('resize', resize);
+
+if ('ResizeObserver' in window) {
+  new ResizeObserver(resize).observe(canvas.parentElement);
+}
+
 function initParticles(){particles=[];for(let i=0;i<N;i++){const angle=Math.random()*Math.PI*2;particles.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:1+Math.random()*2.3,phase:Math.random()*6.28,tx:0,ty:0,angle,depth:Math.random()*2-1})}targets()}
 function targets(){const radius=Math.min(W,H)*.31;particles.forEach((p,i)=>{const y=1-2*(i+.5)/N;const rr=Math.sqrt(1-y*y);const a=i*Math.PI*(3-Math.sqrt(5));p.tx=W/2+Math.cos(a)*rr*radius;p.ty=H/2+y*radius;p.tz=Math.sin(a)*rr})}
 function draw(ts){raf=requestAnimationFrame(draw);const dt=Math.min(32,ts-(last||ts));last=ts;rotation+=dt*.00022;ctx.clearRect(0,0,W,H);
