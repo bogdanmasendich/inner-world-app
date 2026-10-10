@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#090a18">
+<title>Inner World — собери свой внутренний пазл</title>
+<meta name="description" content="Короткое интерактивное исследование состояния, внутреннего ресурса и следующего шага.">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#090a18;--panel:rgba(22,24,48,.82);--panel2:#171a35;--line:rgba(157,164,218,.18);--text:#f5f6ff;--muted:#a7accb;--teal:#4af0d1;--purple:#a58aff;--pink:#e77bda;--danger:#ff687d;--radius:22px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);color-scheme:dark}
+body{margin:0;min-height:100vh;min-height:100dvh;background:radial-gradient(ellipse at 50% -15%,#27204c 0%,#11132a 42%,var(--bg) 76%);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.17;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:32px 32px;mask-image:linear-gradient(to bottom,black,transparent 80%)}
+button,input{font:inherit}button{cursor:pointer;color:inherit}
+.app{position:relative;z-index:1;max-width:540px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));min-height:100dvh}
+.topline{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.brand{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#b8b4df;font-weight:800}
+.stepmark{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:7px 10px}
+.screen{display:none;animation:rise .38s cubic-bezier(.2,.8,.2,1) both}.screen.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+h1,h2,h3,p{margin-top:0}h1{font-size:clamp(34px,9vw,48px);line-height:1.02;letter-spacing:-.055em;margin-bottom:12px}h2{font-size:25px;line-height:1.13;letter-spacing:-.035em;margin-bottom:10px}h3{font-size:17px;margin-bottom:7px}
+p{line-height:1.55;color:var(--muted);font-size:14px}
+.gradient{background:linear-gradient(105deg,#fff 8%,#c5b8ff 46%,var(--teal) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--teal);font-weight:800;margin-bottom:12px}
+.hero{text-align:center;padding-top:8px}.hero p{max-width:370px;margin:0 auto 12px}
+.canvaswrap{height:300px;position:relative;margin:8px -6px 14px;overflow:hidden;border-radius:28px;background:radial-gradient(ellipse at center,rgba(100,70,170,.17),transparent 66%)}
+#particleCanvas{width:100%;height:100%;display:block;touch-action:pan-y}
+.spherehold{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:116px;height:116px;border:0;border-radius:50%;background:radial-gradient(circle at 32% 25%,#7b71cf,#34305f 52%,#15152d 75%);box-shadow:0 0 0 1px rgba(190,180,255,.45),0 0 35px rgba(159,113,255,.3),inset 0 0 25px rgba(255,255,255,.13);display:grid;place-items:center;touch-action:none;user-select:none}
+.spherehold:before{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(173,154,255,.35)}
+.spherehold:after{content:"";position:absolute;inset:-15px;border-radius:50%;border:1px dashed rgba(173,154,255,.2);animation:spin 18s linear infinite}
+.spherehold .holdlabel{font-size:12px;font-weight:750;line-height:1.3;max-width:80px;text-align:center;z-index:1}
+.progress-ring{position:absolute;inset:-9px;transform:rotate(-90deg);overflow:visible;pointer-events:none}
+.progress-ring circle{fill:none;stroke:var(--teal);stroke-width:3;stroke-linecap:round;stroke-dasharray:345;stroke-dashoffset:345}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn{width:100%;border:0;border-radius:16px;padding:16px 18px;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .16s,opacity .2s,box-shadow .2s}
+.btn:active{transform:scale(.985)}.btn-primary{color:#071b20;background:linear-gradient(105deg,#61f4d5,#9bf4e7);box-shadow:0 8px 28px rgba(74,240,209,.16)}
+.btn-secondary{background:rgba(255,255,255,.055);border:1px solid var(--line);color:#e5e7ff}
+.btn:disabled{opacity:.32;cursor:not-allowed;box-shadow:none}
+.hidden{display:none!important}
+.puzzle{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:6px 0 26px}
+.slot{min-height:64px;border:1px dashed rgba(160,164,220,.42);background:rgba(255,255,255,.025);border-radius:17px;padding:11px;display:flex;align-items:center;gap:8px;color:#777d9e;font-size:12px;line-height:1.3;transition:.3s}
+.slot.filled{border:1px solid rgba(74,240,209,.5);background:linear-gradient(135deg,rgba(74,240,209,.1),rgba(165,138,255,.09));color:#f7ffff;box-shadow:inset 0 0 22px rgba(74,240,209,.035);animation:popIn .3s ease both}
+@keyframes popIn{from{transform:scale(.93);opacity:.4}to{transform:scale(1);opacity:1}}
+.slot .sloticon{font-size:22px}.slot small{display:block;color:var(--muted);font-size:10px;margin-bottom:3px}
+.cards{display:grid;gap:10px;margin:20px 0 20px}
+.state-card{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:15px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(120deg,rgba(30,32,63,.84),rgba(17,19,40,.8));transition:.2s}
+.state-card.selected{border-color:var(--teal);background:linear-gradient(120deg,rgba(43,105,106,.28),rgba(40,31,77,.6));box-shadow:0 0 0 1px rgba(74,240,209,.12),0 8px 28px rgba(0,0,0,.13)}
+.state-icon{width:46px;height:46px;flex:0 0 46px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.055);font-size:24px}
+.state-card strong{display:block;font-size:14px;margin-bottom:4px}.state-card small{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+.card-check{margin-left:auto;color:var(--teal);opacity:0;font-size:20px}.selected .card-check{opacity:1}
+.range-head{display:flex;align-items:end;justify-content:space-between;margin:24px 0 12px}
+.charge{font-size:34px;letter-spacing:-.05em;font-weight:850;color:var(--teal);transition:color .2s}
+input[type=range]{width:100%;accent-color:var(--teal);height:28px;touch-action:pan-x;margin:14px 0 4px}
+.range-scale{display:flex;justify-content:space-between;color:#8187a8;font-size:11px}
+.energy-visual{height:116px;border-radius:20px;border:1px solid var(--line);background:rgba(255,255,255,.025);padding:16px;display:flex;align-items:end;gap:5px;overflow:hidden;margin:24px 0}
+.energy-visual span{flex:1;border-radius:5px 5px 2px 2px;background:linear-gradient(to top,var(--purple),var(--teal));opacity:.82;transition:height .25s}
+.result-label{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(74,240,209,.32);border-radius:99px;padding:8px 12px;font-size:12px;color:var(--teal);background:rgba(74,240,209,.07);margin-bottom:17px}
+.result-card,.gift,.product{border:1px solid var(--line);border-radius:22px;padding:20px;background:linear-gradient(140deg,rgba(30,32,64,.86),rgba(16,18,37,.92));margin:16px 0}
+.result-card .bigicon{font-size:35px;margin-bottom:12px}.result-card h3{font-size:21px}.result-card p:last-child{margin-bottom:0}
+.insight{border-left:2px solid var(--teal);padding:2px 0 2px 14px;margin-top:18px}
+.gift{background:radial-gradient(ellipse at 100% 0,rgba(165,138,255,.18),transparent 60%),linear-gradient(140deg,rgba(39,35,75,.95),rgba(18,20,42,.95));border-color:rgba(165,138,255,.28)}
+.gift-icon{font-size:27px;margin-bottom:10px}.gift h3{font-size:18px;line-height:1.3}
+.products{display:grid;gap:12px;margin:20px 0}.product{margin:0;padding:19px}.product .product-icon{font-size:28px;margin-bottom:12px}.product p{font-size:13px;margin-bottom:15px}
+.note{font-size:11px;color:#777e9f;text-align:center;margin:15px 10px 0;line-height:1.5}
+.backlink{border:0;background:none;color:#adb2d3;padding:13px 0;font-size:13px;font-weight:700;width:100%}
+.footer{margin-top:22px;text-align:center;color:#606687;font-size:10px;letter-spacing:.08em}
+.toast{position:fixed;z-index:9;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;background:#252844;border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:12px;transition:.25s;pointer-events:none;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
+/* v2 experience layer */
+.hero-tag{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(165,138,255,.24);border-radius:99px;padding:7px 11px;color:#c9c0f8;font-size:10px;letter-spacing:.08em;background:rgba(165,138,255,.06);margin-bottom:16px}
+.result-card,.gift,.product{box-shadow:0 12px 36px rgba(0,0,0,.12)}
+.reflection{position:relative;overflow:hidden;border:1px solid rgba(74,240,209,.24);border-radius:22px;padding:20px;background:radial-gradient(ellipse at 100% 0,rgba(74,240,209,.1),transparent 52%),linear-gradient(140deg,rgba(21,47,57,.72),rgba(18,20,42,.95));margin:16px 0}
+.reflection:after{content:"✳";position:absolute;right:15px;top:9px;font-size:48px;color:rgba(74,240,209,.08);pointer-events:none}
+.reflection .question{font-size:17px;line-height:1.4;color:#f5f6ff;font-weight:700;max-width:340px;margin:0 0 10px}
+.reflection .subcopy{font-size:12px;margin:0}
+.practice{border:1px solid var(--line);border-radius:22px;padding:19px;background:rgba(255,255,255,.025);margin:16px 0}
+.practice-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.practice-count{font-size:10px;letter-spacing:.1em;color:var(--teal);font-weight:800}
+.practice-dots{display:flex;gap:5px}.practice-dots span{width:6px;height:6px;border-radius:50%;background:#454968}.practice-dots span.on{background:var(--teal);box-shadow:0 0 8px rgba(74,240,209,.45)}
+.practice-prompt{font-size:16px;line-height:1.45;color:#f3f4ff;margin:0 0 8px;font-weight:650}
+.practice-detail{font-size:12px;color:var(--muted);line-height:1.55;margin:0 0 16px}
+.result-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 18px}.result-actions .btn{padding:13px 10px;font-size:12px}
+.btn-quiet{background:rgba(255,255,255,.035);border:1px solid var(--line);color:#c8cbe7}
+.product-number{font-size:10px;letter-spacing:.14em;color:#858bb0;margin-bottom:8px}
+.privacyline{display:flex;align-items:flex-start;gap:8px;color:#777e9f;font-size:10px;line-height:1.5;margin:14px 2px 0}
+@media(min-width:480px){.result-actions{grid-template-columns:1fr 1fr}}
+@media(min-width:480px){.app{padding-left:24px;padding-right:24px}.cards{grid-template-columns:1fr}.products{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="topline"><div class="brand">INNER WORLD <span style="color:var(--teal)">✳</span></div><div class="stepmark" id="stepmark">ПУТЬ К СЕБЕ · 01</div></div>
+
+  <section class="screen active" id="screen-intro">
+    <div class="hero">
+      <div class="hero-tag"><span style="color:var(--teal)">✳</span> 60 СЕКУНД ДЛЯ СЕБЯ</div><div class="eyebrow">Исследование внутреннего мира</div>
+      <h1><span class="gradient">Inner World</span></h1>
+      <h2 style="font-size:20px;font-weight:600">Как устроены твои внутренние процессы?</h2>
+      <p>Внутри нас постоянно крутятся мысли, эмоции и установки. Зажми сферу, чтобы упорядочить их.</p><p style="font-size:11px;opacity:.75;margin-top:-3px">Это не тест на правильность. Здесь можно просто заметить, что происходит внутри.</p>
+    </div>
+    <div class="canvaswrap"><canvas id="particleCanvas" aria-label="Анимация хаоса, который собирается в геометрию"></canvas>
+      <button class="spherehold" id="spherehold" aria-label="Удерживай, чтобы упорядочить частицы">
+        <svg class="progress-ring" viewBox="0 0 116 116"><circle id="progressCircle" cx="58" cy="58" r="55"/></svg>
+        <span class="holdlabel" id="holdlabel">Зажми<br>сферу</span>
+      </button>
+    </div>
+    <p style="text-align:center;font-size:12px;margin-bottom:20px" id="introHint">Удерживай примерно секунду — наблюдай, как хаос становится структурой.</p>
+    <button class="btn btn-primary hidden" id="startJourney">Собрать свой слепок <span>➜</span></button>
+    <div class="footer">ТВОЙ МИР · ТВОИ ПРИЧИНЫ · ТВОИ РЕЗУЛЬТАТЫ</div>
+  </section>
+
+  <section class="screen" id="screen-state">
+    <div class="eyebrow">Собираем твой пазл · 01/02</div>
+    <div class="puzzle">
+      <div class="slot" id="slot-state"><span class="sloticon">❔</span><span>Состояние<br><small>Выбери модуль</small></span></div>
+      <div class="slot" id="slot-energy"><span class="sloticon">🔋</span><span>Заряд энергии<br><small>Пока неизвестен</small></span></div>
+    </div>
+    <h2>Что ближе всего к твоему состоянию сейчас?</h2>
+    <p>Не ищи идеальный ответ. Выбери то, что больше всего откликается в данный момент.</p>
+    <div class="cards" id="stateCards">
+      <button class="state-card" data-state="storm"><span class="state-icon">🌪️</span><span><strong>Шторм / Эмоциональный хаос</strong><small>Много мыслей, тревога, трудно затормозить и расслабиться.</small></span><span class="card-check">✓</span></button>
+      <button class="state-card" data-state="wall"><span class="state-icon">🧱</span><span><strong>Стена / Тупик</strong><small>Понимание проблемы есть, но реального движения вперёд нет.</small></span><span class="card-check">✓</span></button>
+      <button class="state-card" data-state="cycle"><span class="state-icon">🔄</span><span><strong>Замкнутый круг</strong><small>Постоянно прорабатываюсь, хожу по кругу, а результат тот же.</small></span><span class="card-check">✓</span></button>
+      <button class="state-card" data-state="spring"><span class="state-icon">⚡</span><span><strong>Сжатая пружина</strong><small>Фоновый стресс, гиперответственность и сильное истощение.</small></span><span class="card-check">✓</span></button>
+      <button class="state-card" data-state="fog"><span class="state-icon">🌫️</span><span><strong>Апатия / Туман</strong><small>Нет чёткого желания, потерян фокус и внутренние ориентиры.</small></span><span class="card-check">✓</span></button>
+    </div>
+    <button class="btn btn-primary" id="toEnergy" disabled>Далее <span>➜</span></button>
+    <button class="backlink" data-back="intro">← Назад</button>
+  </section>
+
+  <section class="screen" id="screen-energy">
+    <div class="eyebrow">Собираем твой пазл · 02/02</div>
+    <div class="puzzle">
+      <div class="slot filled" id="slot-state-2"><span class="sloticon">🌪️</span><span>Состояние<br><small>Выбрано</small></span></div>
+      <div class="slot" id="slot-energy-2"><span class="sloticon">🔋</span><span>Выбери уровень<br><small>Заряд энергии</small></span></div>
+    </div>
+    <h2>Уровень внутренней энергии</h2>
+    <p>По ощущениям, какой процент энергии у тебя остался прямо сейчас?</p>
+    <div class="range-head"><div><div class="eyebrow" style="margin-bottom:5px">Твой заряд</div><div style="font-size:13px;color:var(--muted)">Субъективная оценка</div></div><div class="charge" id="chargeLabel">40%</div></div>
+    <input id="energyRange" type="range" min="10" max="100" step="1" value="40" aria-label="Уровень энергии от 10 до 100 процентов">
+    <div class="range-scale"><span>10% · почти пусто</span><span>100% · полный заряд</span></div>
+    <div class="energy-visual" id="energyVisual" aria-hidden="true"></div>
+    <button class="btn btn-primary" id="makeResult">Сформировать расшифровку <span>➜</span></button>
+    <button class="backlink" data-back="state">← Назад к состоянию</button>
+  </section>
+
+  <section class="screen" id="screen-result">
+    <div class="eyebrow">Твой персональный слепок</div>
+    <div class="puzzle">
+      <div class="slot filled" id="slot-state-3"><span class="sloticon">🌪️</span><span>Состояние<br><small>Собрано</small></span></div>
+      <div class="slot filled" id="slot-energy-3"><span class="sloticon">🔋</span><span>40% энергии<br><small>Собрано</small></span></div>
+    </div>
+    <div class="result-label">✦ ТВОЯ ТОЧКА ИССЛЕДОВАНИЯ</div>
+    <div class="result-card">
+      <div class="bigicon" id="resultIcon">🌪️</div>
+      <h3 id="resultTitle">Перегруз ментального поля</h3>
+      <p id="resultDiagnosis"></p>
+      <div class="insight"><div class="eyebrow" style="margin-bottom:7px">Куда направить внимание</div><p id="resultAction" style="color:#e4e6ff;margin:0"></p></div>
+    </div>
+    <div class="result-card" style="padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:13px;color:var(--muted)">Текущий энергоресурс</span><strong class="charge" id="resultCharge" style="font-size:24px">40%</strong></div>
+      <div style="height:5px;background:#292b4a;border-radius:99px;margin-top:12px;overflow:hidden"><div id="resultBar" style="height:100%;width:40%;border-radius:99px;background:linear-gradient(90deg,var(--purple),var(--teal));transition:width .5s"></div></div>
+      <p id="energyMeaning" style="font-size:12px;margin:10px 0 0"></p>
+    </div>
+    <div class="reflection">
+      <div class="eyebrow">Смысл твоего сочетания</div>
+      <p class="question" id="comboTitle">Сначала ясность, затем скорость.</p>
+      <p class="subcopy" id="comboText">Состояние и ресурс вместе помогают выбрать не абстрактно правильный, а посильный следующий шаг.</p>
+    </div>
+    <div class="practice" id="practiceCard">
+      <div class="practice-top"><div class="eyebrow" style="margin:0">Мини-практика · 30 секунд</div><div class="practice-dots"><span class="on"></span><span></span><span></span></div></div>
+      <div class="practice-count" id="practiceCount">ШАГ 1 ИЗ 3</div>
+      <p class="practice-prompt" id="practicePrompt">На секунду остановись.</p>
+      <p class="practice-detail" id="practiceDetail">Не нужно ничего исправлять. Просто заметь, что прямо сейчас занимает больше всего места внутри.</p>
+      <button class="btn btn-secondary" id="practiceNext">Продолжить <span>→</span></button>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-quiet" id="saveSnapshot">⌑ Сохранить слепок</button>
+      <button class="btn btn-quiet" id="restartJourney">↻ Собрать заново</button>
+    </div>
+    <div class="gift">
+      <div class="gift-icon">🎁</div>
+      <div class="eyebrow">Твой персональный ключ</div>
+      <h3>Бесплатный видео-урок «Как работать с внутренними образами и забрать контроль»</h3>
+      <p>Следующий шаг — познакомиться с подходом и попробовать применить его на практике.</p>
+      <button class="btn btn-primary" id="claimLesson">Забрать урок в Telegram <span>➜</span></button>
+    </div>
+    <button class="btn btn-secondary" id="showProducts">Посмотреть все форматы и услуги</button>
+    <button class="backlink" data-back="energy">← Изменить уровень энергии</button>
+    <p class="note">Это метафорический инструмент самонаблюдения, а не медицинская или психологическая диагностика. Не нужно верить интерпретации буквально — оставь только то, что помогает тебе лучше понять себя.</p><div class="privacyline"><span>◈</span><span>Твои ответы используются для формирования результата. Сохранение слепка происходит по твоему нажатию.</span></div>
+  </section>
+
+  <section class="screen" id="screen-products">
+    <div class="eyebrow">Выбери свой формат</div>
+    <h2>Продуктовая экосистема <span class="gradient">Inner World</span></h2>
+    <p>От точечных разборов до глубокой трансформации — выбери формат, который подходит тебе сейчас.</p>
+    <div class="products">
+      <article class="product"><div class="product-number">ФОРМАТ 01</div><div class="product-icon">⚡</div><h3>Экспресс-разбор</h3><p><strong style="color:#f1f2ff">Сессия 1-на-1 · 20–30 минут</strong><br>Быстрый разбор актуального зажима и исследование корневого образа.</p><button class="btn btn-primary product-action" data-product="Экспресс-разбор">Записаться на разбор <span>➜</span></button></article>
+      <article class="product"><div class="product-number">ФОРМАТ 02</div><div class="product-icon">🧠</div><h3>Глубинная программа Inner World</h3><p><strong style="color:#f1f2ff">Флагманское сопровождение</strong><br>Работа с внутренними паттернами, фундаментальными образами и целями.</p><button class="btn btn-secondary product-action" data-product="Глубинная программа Inner World">Узнать подробности <span>➜</span></button></article>
+      <article class="product"><div class="product-number">ФОРМАТ 03</div><div class="product-icon">📚</div><h3>Практикум по работе с образами</h3><p><strong style="color:#f1f2ff">Самостоятельный курс</strong><br>Базовые навыки чтения своего состояния и саморегуляции через упражнения.</p><button class="btn btn-secondary product-action" data-product="Практикум по работе с образами">Перейти к практикуму <span>➜</span></button></article>
+    </div>
+    <button class="backlink" data-back="result">← Назад к моему результату</button>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const tg=window.Telegram&&window.Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();if(tg.setHeaderColor)tg.setHeaderColor('#090a18');if(tg.setBackgroundColor)tg.setBackgroundColor('#090a18');}catch(e){}}
+const userState={state:null,energy:40,completedIntro:false,source:'inner_world_twa'};
+const stateData={
+ storm:{icon:'🌪️',short:'Шторм',name:'Перегруз ментального поля',diagnosis:'Энергия может уходить на попытки сдерживать тревогу и внутренний шум — и оставаться на действия всё меньше.',action:'Пересборка фокусного образа и исследование того, что поддерживает фоновый шум.'},
+ wall:{icon:'🧱',short:'Стена',name:'Конфликт у самой преграды',diagnosis:'Ты понимаешь проблему, но движение словно останавливается. Внутри может сталкиваться логическое «надо» и ощущение «опасно».',action:'Исследовать образ преграды и то, какой смысл или риск за ним стоит.'},
+ cycle:{icon:'🔄',short:'Цикл',name:'Повторение одного сценария',diagnosis:'Попытки разобраться могут возвращать к той же точке. Возможно, привычный способ думать о ситуации не даёт увидеть новый ход.',action:'Исследовать бессознательный скрипт через первичный образ и поиск другого ракурса.'},
+ spring:{icon:'⚡',short:'Пружина',name:'Напряжение, которое не отпускает',diagnosis:'Постоянная собранность и ответственность могут не оставлять пространства для восстановления. Расслабление иногда ощущается как потеря контроля.',action:'Исследовать, что удерживает напряжение, и найти способ ослабить его без отказа от важных для тебя задач.'},
+ fog:{icon:'🌫️',short:'Туман',name:'Потеря фокуса и ориентиров',diagnosis:'Когда ресурс долго расходуется, желания и приоритеты могут ощущаться размытыми. Это повод не требовать от себя немедленной ясности, а присмотреться к источникам нагрузки.',action:'Постепенно искать, что забирает ресурс и какое желание или потребность скрывается за туманом.'}
+};
+const screens=['intro','state','energy','result','products'];
+const stepLabels={intro:'ПУТЬ К СЕБЕ · 01',state:'СОБИРАЕМ ПАЗЛ · 02',energy:'СОБИРАЕМ ПАЗЛ · 03',result:'ТВОЙ СЛЕПОК · 04',products:'ТВОЙ ПУТЬ · 05'};
+function haptic(kind='light'){try{tg?.HapticFeedback?.impactOccurred(kind)}catch(e){}}
+function notify(message){const t=$('#toast');t.textContent=message;t.classList.add('show');clearTimeout(notify.timer);notify.timer=setTimeout(()=>t.classList.remove('show'),2600)}
+function showScreen(name){screens.forEach(s=>$('#screen-'+s).classList.toggle('active',s===name));$('#stepmark').textContent=stepLabels[name];window.scrollTo({top:0,behavior:'smooth'});haptic('light')}
+function fillSlot(el,icon,title,subtitle){el.classList.add('filled');el.innerHTML='<span class="sloticon">'+icon+'</span><span>'+title+'<small>'+subtitle+'</small></span>'}
+function syncPuzzle(){
+ if(!userState.state)return;const d=stateData[userState.state];
+ fillSlot($('#slot-state-2'),d.icon,d.short,'Выбрано');fillSlot($('#slot-state-3'),d.icon,d.short,'Собрано');
+ fillSlot($('#slot-energy-3'),'🔋',userState.energy+'% энергии','Собрано');
+ if($('#screen-energy').classList.contains('active'))fillSlot($('#slot-energy-2'),'🔋',userState.energy+'% энергии','Заряд выбран');
+}
+$$('.state-card').forEach(card=>card.addEventListener('click',()=>{
+ userState.state=card.dataset.state;$$('.state-card').forEach(c=>c.classList.toggle('selected',c===card));$('#toEnergy').disabled=false;const d=stateData[userState.state];fillSlot($('#slot-state'),d.icon,d.short,'Выбрано');syncPuzzle();haptic('medium');
+}));
+$('#toEnergy').addEventListener('click',()=>{syncPuzzle();showScreen('energy')});
+const range=$('#energyRange'),charge=$('#chargeLabel'),visual=$('#energyVisual');
+for(let i=0;i<22;i++){const bar=document.createElement('span');bar.dataset.i=i;visual.appendChild(bar)}
+function updateEnergy(touched){userState.energy=Number(range.value);const v=userState.energy;const hue= Math.round(2+(v-10)*1.55);charge.textContent=v+'%';charge.style.color=v<35?'#ff7188':v<65?'#d5b7ff':'#4af0d1';range.style.accentColor=v<35?'#ff7188':v<65?'#bd9aff':'#4af0d1';
+ Array.from(visual.children).forEach((b,i)=>{const threshold=(i+1)/22*100;b.style.height=Math.max(13,Math.min(100,20+((i*17+v*3)%55)))+'%';b.style.opacity=threshold<=v?'.9':'.16';b.style.filter=threshold<=v?'none':'grayscale(1)'});
+ if(touched&&userState.state)fillSlot($('#slot-energy-2'),'🔋',v+'% энергии','Заряд выбран');
+}
+range.addEventListener('input',()=>{updateEnergy(true);haptic('selection')});updateEnergy(false);
+function energyText(v){if(v<=25)return'По твоей оценке, сейчас энергии мало. Возможно, полезно начать с самого небольшого шага и не требовать от себя максимальной скорости.';if(v<=55)return'Ресурс ощущается частичным: стоит заметить, на что он уходит и что действительно заслуживает твоего внимания.';if(v<=80)return'Есть ощутимый запас энергии. Можно выбрать один приоритет и направить на него внимание, не распыляясь.';return'Ты ощущаешь высокий уровень ресурса. Подумай, какое важное действие сейчас даст ему наиболее осмысленное направление.'}
+const practiceSteps={
+ storm:[['Назови шум','Какая мысль или тема громче остальных прямо сейчас? Не анализируй её — просто назови.'],['Отдели факт от шума','Что из этого уже факт, а что — прогноз, опасение или попытка всё предусмотреть?'],['Верни один фокус','Какое одно маленькое действие действительно зависит от тебя в ближайшие 10 минут?']],
+ wall:[['Заметь преграду','Представь ситуацию как стену. Что именно она не даёт тебе сделать или почувствовать?'],['Услышь запрет','Если бы эта преграда пыталась тебя защитить, от какого риска она предостерегала бы?'],['Найди проход','Какой самый маленький безопасный шаг можно попробовать — не ломая стену целиком?']],
+ cycle:[['Увидь повтор','Что именно повторяется в этой ситуации: мысль, реакция, действие или выбор?'],['Смени вопрос','Вместо «как мне это решить?» спроси: «что я пока считаю единственно возможным?»'],['Измени один элемент','Какой один привычный шаг можно сделать иначе в следующий раз?']],
+ spring:[['Почувствуй напряжение','Где в теле заметнее всего ощущается необходимость держать всё под контролем?'],['Разреши 5% мягкости','Что можно на минуту не удерживать идеально, не создавая реальной опасности?'],['Сохрани опору','Что поможет тебе сделать паузу и при этом не потерять ощущение устойчивости?']],
+ fog:[['Не требуй ясности','Необязательно сразу знать, чего ты хочешь. Что ты замечаешь в себе прямо сейчас?'],['Найди утечку','Что в последнее время забирает больше сил, чем кажется со стороны?'],['Найди искру','Что могло бы добавить тебе хотя бы 1% интереса или облегчения сегодня?']]
+};
+function renderPractice(){const steps=practiceSteps[userState.state]||practiceSteps.storm;const i=practiceIndex;$('#practiceCount').textContent='ШАГ '+(i+1)+' ИЗ 3';$('#practicePrompt').textContent=steps[i][0];$('#practiceDetail').textContent=steps[i][1];$('#practiceNext').innerHTML=i===2?'Завершить практику <span>✓</span>':'Продолжить <span>→</span>';$$('.practice-dots span').forEach((d,n)=>d.classList.toggle('on',n<=i))}
+let practiceIndex=0;
+$('#makeResult').addEventListener('click',()=>{
+ if(!userState.state){notify('Сначала выбери состояние');showScreen('state');return}
+ const d=stateData[userState.state],v=userState.energy;
+ $('#resultIcon').textContent=d.icon;$('#resultTitle').textContent=d.name;$('#resultDiagnosis').textContent=d.diagnosis;$('#resultAction').textContent=d.action;
+ $('#resultCharge').textContent=v+'%';$('#resultBar').style.width=v+'%';$('#energyMeaning').textContent=energyText(v);
+ const low=v<=35,high=v>=75;
+ $('#comboTitle').textContent=low?'Сейчас важнее бережность, чем рывок.':high?'Ресурс есть — направь его точнее.':'Найди точку, где усилие даст отдачу.';
+ $('#comboText').textContent=low?'При состоянии «'+d.short+'» и небольшом заряде начни не с большого решения, а с уменьшения внутренней нагрузки. Один посильный шаг уже считается движением.':high?'При состоянии «'+d.short+'» у тебя по ощущениям есть ресурс для эксперимента. Не пытайся решить всё: выбери один образ, вопрос или действие, которое хочешь исследовать.':'При состоянии «'+d.short+'» полезно заметить, куда уходит ресурс и что его возвращает. Сначала проясни один участок, затем решай, куда двигаться.';
+ fillSlot($('#slot-state-3'),d.icon,d.short,'Собрано');fillSlot($('#slot-energy-3'),'🔋',v+'% энергии','Собрано');
+ practiceIndex=0;renderPractice();userState.resultCreatedAt=new Date().toISOString();
+ try{localStorage.setItem('innerWorldLastSnapshot',JSON.stringify({state:userState.state,energy:userState.energy,createdAt:userState.resultCreatedAt}))}catch(e){}
+ showScreen('result');
+});
+$('#practiceNext').addEventListener('click',()=>{if(practiceIndex<2){practiceIndex++;renderPractice();haptic('light')}else{$('#practicePrompt').textContent='Ты уже сделал главное — остановился и заметил.';$('#practiceDetail').textContent='Возьми с собой одну мысль из этой практики. Не обязательно действовать прямо сейчас.';$('#practiceNext').textContent='Практика завершена ✓';$('#practiceNext').disabled=true;haptic('medium')}});
+function snapshotText(){const d=stateData[userState.state];return 'INNER WORLD · МОЙ СЛЕПОК\nСостояние: '+(d?d.short:'не выбрано')+'\nЭнергия: '+userState.energy+'%\n\nНаблюдение: '+(d?d.diagnosis:'')+'\nФокус: '+(d?d.action:'')+'\n\nЭто инструмент самонаблюдения, не диагноз.'}
+$('#saveSnapshot').addEventListener('click',()=>{const data={state:userState.state,energy:userState.energy,createdAt:new Date().toISOString(),text:snapshotText()};try{localStorage.setItem('innerWorldLastSnapshot',JSON.stringify(data))}catch(e){};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(snapshotText()).then(()=>notify('Слепок сохранён в приложении и скопирован.')).catch(()=>notify('Слепок сохранён в приложении.'))}else{notify('Слепок сохранён в этом браузере.')}});
+$('#restartJourney').addEventListener('click',()=>{userState.state=null;userState.energy=40;userState.completedIntro=true;range.value='40';updateEnergy(false);$$('.state-card').forEach(c=>c.classList.remove('selected'));$('#toEnergy').disabled=true;$('#practiceNext').disabled=false;$('#practiceNext').innerHTML='Продолжить <span>→</span>';fillSlot($('#slot-state'),'❔','Состояние','Выбери модуль');fillSlot($('#slot-energy'),'🔋','Заряд энергии','Пока неизвестен');showScreen('state')});
+$('#showProducts').addEventListener('click',()=>showScreen('products'));
+$$('[data-back]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.back)));
+function sendLead(action,extra={}){
+ const payload={type:'inner_world_lead',action,...userState,...extra,created_at:new Date().toISOString()};
+ try{if(tg&&typeof tg.sendData==='function'&&tg.initData){tg.sendData(JSON.stringify(payload));notify('Данные отправлены боту. Он подскажет следующий шаг.');return true}}catch(e){}
+ try{if(tg&&typeof tg.sendData==='function'&&window.Telegram?.WebApp?.platform!=='unknown'){tg.sendData(JSON.stringify(payload));notify('Данные отправлены боту.');return true}}catch(e){}
+ return false;
+}
+$('#claimLesson').addEventListener('click',()=>{
+ const sent=sendLead('claim_lesson');
+ if(!sent){notify('Для автоматической выдачи урока нужен подключённый Telegram-бот. Слепок можно сохранить отдельно.');}
+});
+$$('.product-action').forEach(b=>b.addEventListener('click',()=>{
+ const product=b.dataset.product;const sent=sendLead('product_interest',{product});
+ if(!sent)notify('Заявка будет отправляться после подключения Telegram-бота.');
+}));
+/* Canvas: lightweight particle field transitions from noise into a rotating geometric sphere. */
+const canvas=$('#particleCanvas'),ctx=canvas.getContext('2d'),sphere=$('#spherehold'),label=$('#holdlabel'),ring=$('#progressCircle');
+let W=0,H=0,particles=[],ordered=false,holding=false,holdStart=0,rafHold=null,raf=0,last=0,rotation=0;
+const N=56;
+function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(!particles.length)initParticles()}
+function initParticles(){particles=[];for(let i=0;i<N;i++){const angle=Math.random()*Math.PI*2;particles.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:1+Math.random()*2.3,phase:Math.random()*6.28,tx:0,ty:0,angle,depth:Math.random()*2-1})}targets()}
+function targets(){const radius=Math.min(W,H)*.31;particles.forEach((p,i)=>{const y=1-2*(i+.5)/N;const rr=Math.sqrt(1-y*y);const a=i*Math.PI*(3-Math.sqrt(5));p.tx=W/2+Math.cos(a)*rr*radius;p.ty=H/2+y*radius;p.tz=Math.sin(a)*rr})}
+function draw(ts){raf=requestAnimationFrame(draw);const dt=Math.min(32,ts-(last||ts));last=ts;rotation+=dt*.00022;ctx.clearRect(0,0,W,H);
+ const pts=[];
+ particles.forEach((p,i)=>{if(ordered){p.x+=(p.tx-p.x)*.055;p.y+=(p.ty-p.y)*.055}else{p.x+=p.vx*dt*.22+Math.sin(ts*.0007+p.phase)*.13;p.y+=p.vy*dt*.22+Math.cos(ts*.0008+p.phase)*.13;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;p.x=Math.max(2,Math.min(W-2,p.x));p.y=Math.max(2,Math.min(H-2,p.y))}
+ let x=p.x,y=p.y;if(ordered){const dx=p.x-W/2,dy=p.y-H/2;x=W/2+dx*Math.cos(rotation)-dy*Math.sin(rotation)*.24;y=H/2+dy*Math.cos(rotation)*.9+dx*Math.sin(rotation)*.24}
+ pts.push({x,y,r:p.r,p});
+ });
+ ctx.lineWidth=.65;
+ for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const a=pts[i],b=pts[j],dist=Math.hypot(a.x-b.x,a.y-b.y),limit=ordered?Math.min(W,H)*.21:65;if(dist<limit&&(!ordered||((i*7+j*3)%4!==0))){ctx.strokeStyle=ordered?'rgba(74,240,209,'+(0.23*(1-dist/limit))+')':'rgba(166,143,232,'+(0.13*(1-dist/limit))+')';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}}
+ pts.forEach(({x,y,r,p},i)=>{const pulse=.65+.35*Math.sin(ts*.002+p.phase);ctx.beginPath();ctx.arc(x,y,r*(ordered?1.05:1)*pulse,0,Math.PI*2);ctx.fillStyle=ordered?'rgba(90,255,221,'+(.6+.4*pulse)+')':'rgba(177,155,240,'+(.35+.3*pulse)+')';ctx.shadowBlur=ordered?10:4;ctx.shadowColor=ordered?'#4af0d1':'#a58aff';ctx.fill();ctx.shadowBlur=0});
+ if(ordered){ctx.beginPath();ctx.arc(W/2,H/2,Math.min(W,H)*.31,0,Math.PI*2);ctx.strokeStyle='rgba(74,240,209,.2)';ctx.lineWidth=1;ctx.stroke();ctx.beginPath();ctx.ellipse(W/2,H/2,Math.min(W,H)*.34,Math.min(W,H)*.13,rotation,0,Math.PI*2);ctx.strokeStyle='rgba(165,138,255,.35)';ctx.stroke()}
+}
+function startHold(e){if(ordered)return;e.preventDefault();holding=true;holdStart=performance.now();ring.style.strokeDashoffset='345';try{sphere.setPointerCapture(e.pointerId)}catch(_){}cancelAnimationFrame(rafHold);function tick(now){if(!holding)return;const progress=Math.min(1,(now-holdStart)/900);ring.style.strokeDashoffset=String(345*(1-progress));if(progress>=1){finishHold();return}rafHold=requestAnimationFrame(tick)}rafHold=requestAnimationFrame(tick)}
+function finishHold(){if(ordered)return;holding=false;ordered=true;userState.completedIntro=true;ring.style.strokeDashoffset='0';label.innerHTML='Готово!<br>✨';sphere.style.background='radial-gradient(circle at 32% 25%,#79ffe4,#1c746f 55%,#102b39 80%)';sphere.style.boxShadow='0 0 0 1px rgba(74,240,209,.65),0 0 38px rgba(74,240,209,.36),inset 0 0 25px rgba(255,255,255,.15)';$('#introHint').textContent='Иногда достаточно остановиться, чтобы увидеть структуру.';$('#startJourney').classList.remove('hidden');haptic('medium');}
+function endHold(){if(!holding)return;holding=false;cancelAnimationFrame(rafHold);if(!ordered)ring.style.strokeDashoffset='345'}
+sphere.addEventListener('pointerdown',startHold);sphere.addEventListener('pointerup',endHold);sphere.addEventListener('pointercancel',endHold);sphere.addEventListener('lostpointercapture',endHold);sphere.addEventListener('contextmenu',e=>e.preventDefault());
+$('#startJourney').addEventListener('click',()=>showScreen('state'));
+window.addEventListener('resize',()=>{resize();targets()});resize();requestAnimationFrame(draw);
+document.addEventListener('touchmove',e=>{if(e.target===range||e.target.closest('.app')){if(e.target!==range&&!e.target.closest('.state-card'))return}}, {passive:true});
+})();
+</script>
+</body>
+</html>
